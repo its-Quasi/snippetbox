@@ -6,15 +6,19 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+
+	_ "github.com/lib/pq"
+	"snippetbox.quasi.go/internal/models"
 )
 
 type Application struct {
-	logger *slog.Logger
+	logger            *slog.Logger
+	snippetRepository *models.SnippetModel
 }
 
 func main() {
 	addr := flag.String("addr", ":4000", "HTTP network address")
-	dsn := flag.String("dsn", "web:pass@/snippetbox?parseTime=true", "MySQL data source name")
+	dsn := flag.String("dsn", "postgres://postgres:quasi201@localhost:5543/snippetbox?sslmode=disable", "postgres data source name")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -27,7 +31,8 @@ func main() {
 	defer db.Close()
 
 	app := &Application{
-		logger: logger,
+		logger:            logger,
+		snippetRepository: &models.SnippetModel{DB: db},
 	}
 
 	logger.Info("starting server", "addr", *addr)
@@ -40,7 +45,7 @@ func main() {
 }
 
 func openDB(dsn string) (*sql.DB, error) {
-	db, err := sql.Open("postgresql", dsn)
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
 	}

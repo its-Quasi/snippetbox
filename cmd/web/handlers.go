@@ -5,10 +5,11 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"time"
+
+	"snippetbox.quasi.go/internal/models"
 )
 
-// Change the signature of the home handler so it is defined as a method against
-// *application.
 func (app *Application) home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Server", "Go")
 
@@ -30,8 +31,6 @@ func (app *Application) home(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Change the signature of the snippetView handler so it is defined as a method
-// against *application.
 func (app *Application) snippetView(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id < 1 {
@@ -42,15 +41,23 @@ func (app *Application) snippetView(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Display a specific snippet with ID %d...", id)
 }
 
-// Change the signature of the snippetCreate handler so it is defined as a method
-// against *application.
 func (app *Application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Display a form for creating a new snippet..."))
 }
 
-// Change the signature of the snippetCreatePost handler so it is defined as a method
-// against *application.
 func (app *Application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Save a new snippet..."))
+
+	snippet := models.Snippet{
+		Title:   "O snail",
+		Content: "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa",
+		Expires: time.Now().AddDate(0, 0, 7),
+	}
+
+	id, err := app.snippetRepository.Insert(&snippet)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }

@@ -58,3 +58,33 @@ func (m *SnippetModel) Get(id int) (Snippet, error) {
 	}
 	return s, nil
 }
+
+func (m *SnippetModel) Latest() ([]Snippet, error) {
+
+	stmt := `
+		SELECT id, title, content, created, expires
+		FROM snippets
+		ORDER BY id desc
+		LIMIT 10
+	`
+	rows, err := m.DB.Query(stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var snippets []Snippet
+
+	for rows.Next() {
+		var s Snippet
+		err = rows.Scan(&s.ID, &s.Title, &s.Content, &s.Created, &s.Expires)
+		if err != nil {
+			return nil, err
+		}
+		snippets = append(snippets, s)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return snippets, nil
+}

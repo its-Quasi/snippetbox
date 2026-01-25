@@ -11,8 +11,6 @@ import (
 )
 
 func (app *Application) home(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Server", "Go")
-
 	snippets, err := app.snippetRepository.Latest()
 	if err != nil {
 		app.serverError(w, r, err)
@@ -42,6 +40,7 @@ func (app *Application) snippetView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println(id)
 	// Use the new render helper.
 	app.render(w, r, http.StatusOK, "view.html", templateData{
 		Snippet: snippet,

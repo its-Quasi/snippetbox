@@ -4,11 +4,21 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"snippetbox.quasi.go/internal/models"
 )
+
+type snippetCreateForm struct {
+	Title       string
+	Content     string
+	Expires     int
+	FieldErrors map[string]string
+}
 
 func (app *Application) home(w http.ResponseWriter, r *http.Request) {
 	snippets, err := app.snippetRepository.Latest()
@@ -48,22 +58,71 @@ func (app *Application) snippetView(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *Application) snippetCreate(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Display a form for creating a new snippet..."))
+	data := app.newTemplateData(r)
+	data.Form = snippetCreateForm{
+		Expires: 365,
+	}
+	app.logger.Info(fmt.Sprintf("form data: %+v", data.Form))
+	app.render(w, r, http.StatusOK, "create.html", data)
 }
 
 func (app *Application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
 
-	snippet := models.Snippet{
-		Title:   "O snail",
-		Content: "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa",
-		Expires: time.Now().AddDate(0, 0, 7),
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
 	}
 
-	id, err := app.snippetRepository.Insert(&snippet)
+	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
+
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	form := snippetCreateForm{
+		Title:       r.PostForm.Get("title"),
+		Content:     r.PostForm.Get("content"),
+		Expires:     expires,
+		FieldErrors: map[string]string{},
+	}
+
+	if isEmpty(form.Title) {
+		form.FieldErrors["title"] = "This field cannot be blank"
+	} else if utf8.RuneCountInString(form.Title) > 100 {
+		form.FieldErrors["title"] = "This field cannot be more than 100 characters long"
+	}
+
+	if isEmpty(form.Content) {
+		form.FieldErrors["content"] = "This field cannot be blank"
+	}
+
+	if slices.Contains([]int{1, 7, 365}, form.Expires) == false {
+		form.FieldErrors["expires"] = "This field must equal 1, 7 or 365"
+	}
+
+	if len(form.FieldErrors) > 0 {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, r, http.StatusUnprocessableEntity, "create.html", data)
+		return
+	}
+
+	id, err := app.snippetRepository.Insert(&models.Snippet{
+		Title:   form.Title,
+		Content: form.Content,
+		Expires: time.Now().AddDate(0, 0, form.Expires),
+	})
+
 	if err != nil {
 		app.serverError(w, r, err)
 		return
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
+}
+
+func isEmpty(s string) bool {
+	return strings.TrimSpace(s) == ""
 }

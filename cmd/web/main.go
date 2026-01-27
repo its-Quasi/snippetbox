@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-playground/form/v4"
 	_ "github.com/lib/pq"
 	"snippetbox.quasi.go/internal/models"
 )
@@ -16,6 +17,7 @@ type Application struct {
 	logger            *slog.Logger
 	snippetRepository *models.SnippetModel
 	templateCache     map[string]*template.Template
+	formDecoder       *form.Decoder
 }
 
 func main() {
@@ -39,10 +41,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	formDecoder := form.NewDecoder()
+
 	app := &Application{
 		logger:            logger,
 		snippetRepository: &models.SnippetModel{DB: db},
 		templateCache:     templateCache,
+		formDecoder:       formDecoder,
 	}
 
 	logger.Info("starting server", "addr", *addr)

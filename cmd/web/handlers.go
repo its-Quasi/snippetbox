@@ -8,7 +8,15 @@ import (
 	"time"
 
 	"snippetbox.quasi.go/internal/models"
+	"snippetbox.quasi.go/internal/validator"
 )
+
+type snippetCreateForm struct {
+	Title               string `form:"title"`
+	Content             string `form:"content"`
+	Expires             int    `form:"expires"`
+	validator.Validator `form:"-"`
+}
 
 func (app *Application) home(w http.ResponseWriter, r *http.Request) {
 	snippets, err := app.snippetRepository.Latest()
@@ -48,18 +56,42 @@ func (app *Application) snippetView(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *Application) snippetCreate(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Display a form for creating a new snippet..."))
+	data := app.newTemplateData(r)
+	data.Form = snippetCreateForm{
+		Expires: 365,
+	}
+	app.logger.Info(fmt.Sprintf("form data: %+v", data.Form))
+	app.render(w, r, http.StatusOK, "create.html", data)
 }
 
 func (app *Application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
 
-	snippet := models.Snippet{
-		Title:   "O snail",
-		Content: "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa",
-		Expires: time.Now().AddDate(0, 0, 7),
+	var form snippetCreateForm
+	err := app.decodePostForm(r, form)
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
 	}
 
-	id, err := app.snippetRepository.Insert(&snippet)
+	// VALIDATIONS
+	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
+	form.CheckField(validator.MaxChars(form.Title, 100), "title", "this field must be have at most 100 characters")
+	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
+	form.CheckField(validator.PermittedValue(form.Expires, 1, 7, 365), "expires", "This field must equal 1, 7 or 365")
+
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, r, http.StatusUnprocessableEntity, "create.html", data)
+		return
+	}
+
+	id, err := app.snippetRepository.Insert(&models.Snippet{
+		Title:   form.Title,
+		Content: form.Content,
+		Expires: time.Now().AddDate(0, 0, form.Expires),
+	})
+
 	if err != nil {
 		app.serverError(w, r, err)
 		return

@@ -7,7 +7,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/alexedwards/scs/postgresstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-playground/form/v4"
 	_ "github.com/lib/pq"
 	"snippetbox.quasi.go/internal/models"
@@ -18,6 +21,7 @@ type Application struct {
 	snippetRepository *models.SnippetModel
 	templateCache     map[string]*template.Template
 	formDecoder       *form.Decoder
+	sessionManager    *scs.SessionManager
 }
 
 func main() {
@@ -43,11 +47,16 @@ func main() {
 
 	formDecoder := form.NewDecoder()
 
+	sessionManager := scs.New()
+	sessionManager.Store = postgresstore.New(db)
+	sessionManager.Lifetime = 12 * time.Hour
+
 	app := &Application{
 		logger:            logger,
 		snippetRepository: &models.SnippetModel{DB: db},
 		templateCache:     templateCache,
 		formDecoder:       formDecoder,
+		sessionManager:    sessionManager,
 	}
 
 	logger.Info("starting server", "addr", *addr)

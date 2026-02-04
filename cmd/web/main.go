@@ -1,10 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"flag"
 	"html/template"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -59,11 +61,31 @@ func main() {
 		sessionManager:    sessionManager,
 	}
 
+	tlsConfig := &tls.Config{
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+	}
+
+	srv := &http.Server{
+		Addr:         *addr,
+		Handler:      app.routes(),
+		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		TLSConfig:    tlsConfig,
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		ConnState: func(c net.Conn, cs http.ConnState) {
+			logger.Info("Connetion State",
+				"remote", c.RemoteAddr().String(),
+				"state", cs.String(),
+			)
+		},
+	}
+
 	logger.Info("starting server", "addr", *addr)
 
 	// Call the new app.routes() method to get the servemux containing our routes,
 	// and pass that to http.ListenAndServe().
-	err = http.ListenAndServe(*addr, app.routes())
+	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	logger.Error(err.Error())
 	os.Exit(1)
 }

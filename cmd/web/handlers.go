@@ -18,8 +18,15 @@ type snippetCreateForm struct {
 	validator.Validator `form:"-"`
 }
 
+type userSignupForm struct {
+	Name                string `form:"name"`
+	Email               string `form:"email"`
+	Password            string `form:"password"`
+	validator.Validator `form:"-"`
+}
+
 func (app *Application) home(w http.ResponseWriter, r *http.Request) {
-	snippets, err := app.snippetRepository.Latest()
+	snippets, err := app.snippetModel.Latest()
 	if err != nil {
 		app.serverError(w, r, err)
 		return
@@ -38,7 +45,7 @@ func (app *Application) snippetView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	snippet, err := app.snippetRepository.Get(id)
+	snippet, err := app.snippetModel.Get(id)
 	if err != nil {
 		if errors.Is(err, models.ErrNoRecord) {
 			http.NotFound(w, r)
@@ -85,7 +92,7 @@ func (app *Application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	id, err := app.snippetRepository.Insert(&models.Snippet{
+	id, err := app.snippetModel.Insert(&models.Snippet{
 		Title:   form.Title,
 		Content: form.Content,
 		Expires: time.Now().AddDate(0, 0, form.Expires),
@@ -99,4 +106,26 @@ func (app *Application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	app.sessionManager.Put(r.Context(), "flash", "Snippet succesfully created!")
 
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
+}
+
+func (app *Application) userSignup(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	data.Form = userSignupForm{}
+	app.render(w, r, http.StatusOK, "signup.html", data)
+}
+
+func (app *Application) userSignupPost(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Create a new user...")
+}
+
+func (app *Application) userLogin(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Display a form for logging in a user...")
+}
+
+func (app *Application) userLoginPost(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Authenticate and login the user...")
+}
+
+func (app *Application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Logout the user...")
 }

@@ -46,12 +46,19 @@ func (m *UserModel) Insert(name, email, password string) error {
 
 func (m *UserModel) Authenticate(email, password string) (int, error) {
 	stmt := `
-		SELECT * FROM users
+		SELECT id, name, email, hashed_password, created
+		FROM users
 		WHERE email = $1
 	`
-
 	var user User
-	err := m.DB.QueryRow(stmt, email).Scan(&user)
+
+	err := m.DB.QueryRow(stmt, email).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+		&user.HashedPassword,
+		&user.Created,
+	)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

@@ -18,12 +18,17 @@ import (
 	"snippetbox.quasi.go/internal/models"
 )
 
+type Models struct {
+	snippetModel *models.SnippetModel
+	usersModel   *models.UserModel
+}
 type Application struct {
-	logger            *slog.Logger
-	snippetRepository *models.SnippetModel
-	templateCache     map[string]*template.Template
-	formDecoder       *form.Decoder
-	sessionManager    *scs.SessionManager
+	logger         *slog.Logger
+	templateCache  map[string]*template.Template
+	formDecoder    *form.Decoder
+	sessionManager *scs.SessionManager
+	// Struct Embedding
+	*Models
 }
 
 func main() {
@@ -53,12 +58,18 @@ func main() {
 	sessionManager.Store = postgresstore.New(db)
 	sessionManager.Lifetime = 12 * time.Hour
 
+	//Initializing models
+	models := &Models{
+		snippetModel: &models.SnippetModel{DB: db},
+		usersModel:   &models.UserModel{DB: db},
+	}
+
 	app := &Application{
-		logger:            logger,
-		snippetRepository: &models.SnippetModel{DB: db},
-		templateCache:     templateCache,
-		formDecoder:       formDecoder,
-		sessionManager:    sessionManager,
+		logger:         logger,
+		templateCache:  templateCache,
+		formDecoder:    formDecoder,
+		sessionManager: sessionManager,
+		Models:         models,
 	}
 
 	tlsConfig := &tls.Config{

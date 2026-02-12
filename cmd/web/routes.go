@@ -4,17 +4,13 @@ import (
 	"net/http"
 
 	"github.com/justinas/alice"
+	"snippetbox.quasi.go/ui"
 )
-
-// The routes() method returns a servemux containing our application routes.
 
 func (app *Application) routes() http.Handler {
 	mux := http.NewServeMux()
+	mux.Handle("GET /static/", http.FileServerFS(ui.Files))
 
-	fileServer := http.FileServer(http.Dir("./ui/static/"))
-	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
-
-	// Use the nosurf middleware on all our 'dynamic' routes.
 	dynamic := alice.New(app.sessionManager.LoadAndSave, noSurf, app.authenticate)
 
 	mux.Handle("GET /{$}", dynamic.ThenFunc(app.home))

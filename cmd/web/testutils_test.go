@@ -8,13 +8,38 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-playground/form/v4"
+	"snippetbox.quasi.go/internal/models/mocks"
 )
 
-// Create a newTestApplication helper which returns an instance of our
-// application struct containing mocked dependencies.
 func newTestApplication(t *testing.T) *Application {
+	// Create an instance of the template cache.
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// And a form decoder.
+	formDecoder := form.NewDecoder()
+
+	sessionManager := scs.New()
+	sessionManager.Lifetime = 12 * time.Hour
+	sessionManager.Cookie.Secure = true
+
+	models := &Models{
+		snippetModel: &mocks.SnippetModel{},
+		usersModel:   &mocks.UserModel{},
+	}
+
 	return &Application{
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+		templateCache:  templateCache,
+		formDecoder:    formDecoder,
+		sessionManager: sessionManager,
+		Models:         models,
 	}
 }
 

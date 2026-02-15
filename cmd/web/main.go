@@ -19,8 +19,8 @@ import (
 )
 
 type Models struct {
-	snippetModel *models.SnippetModel
-	usersModel   *models.UserModel
+	snippetModel models.SnippetModelInterface
+	usersModel   models.UserModelInterface
 }
 type Application struct {
 	logger         *slog.Logger
